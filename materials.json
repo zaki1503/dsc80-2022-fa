@@ -1,0 +1,344 @@
+{
+    "collections": {
+        "projects": {
+            "publication_schema": {
+                "required_artifacts": [
+                    "assignment"
+                ],
+                "optional_artifacts": [],
+                "metadata_schema": {
+                    "type": "dict",
+                    "required_keys": {
+                        "number": {
+                            "type": "integer"
+                        },
+                        "released": {
+                            "type": "datetime"
+                        },
+                        "topic": {
+                            "type": "string"
+                        },
+                        "checkpoint_released": {
+                            "type": "datetime"
+                        },
+                        "checkpoint_due": {
+                            "nullable": true,
+                            "type": "datetime"
+                        },
+                        "due": {
+                            "type": "datetime"
+                        }
+                    }
+                },
+                "allow_unspecified_artifacts": false,
+                "is_ordered": true
+            },
+            "publications": {
+                "01-gradebook": {
+                    "metadata": {
+                        "number": 1,
+                        "released": "2022-10-06 23:59:00",
+                        "topic": "The Other Side of Gradescope",
+                        "checkpoint_released": "2022-09-29 23:59:00",
+                        "checkpoint_due": "2022-10-06 23:59:00",
+                        "due": "2022-10-13 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "02-covid_vax": {
+                    "metadata": {
+                        "number": 2,
+                        "released": "2022-10-21 23:59:00",
+                        "topic": "COVID-19 Vaccine Effectiveness",
+                        "checkpoint_released": "2022-10-13 23:59:00",
+                        "checkpoint_due": "2022-10-20 23:59:00",
+                        "due": "2022-10-27 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "03-eda/fa21": {
+                    "metadata": {
+                        "number": 3,
+                        "released": "2021-10-29 00:00:00",
+                        "topic": "Topic Projects",
+                        "checkpoint_released": "2021-10-29 00:00:00",
+                        "checkpoint_due": null,
+                        "due": "2021-11-12 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "03-topic": {
+                    "metadata": {
+                        "number": 4,
+                        "released": "2021-10-29 00:00:00",
+                        "topic": "Topic Projects",
+                        "checkpoint_released": "2021-10-29 00:00:00",
+                        "checkpoint_due": null,
+                        "due": "2021-11-12 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "04-language_models": {
+                    "metadata": {
+                        "number": 4,
+                        "released": "2021-11-20 23:59:00",
+                        "topic": "Language Models",
+                        "checkpoint_released": "2021-11-15 23:59:00",
+                        "checkpoint_due": "2021-11-19 23:59:00",
+                        "due": "2021-11-29 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "05-topic-II/fa21": {
+                    "metadata": {
+                        "number": 5,
+                        "released": "2021-11-29 00:00:00",
+                        "topic": "Topic Projects, Part II",
+                        "checkpoint_released": "2021-11-29 00:00:00",
+                        "checkpoint_due": null,
+                        "due": "2021-12-08 23:59:00"
+                    },
+                    "artifacts": {}
+                }
+            }
+        },
+        "discussions": {
+            "publication_schema": {
+                "required_artifacts": [
+                    "assignment"
+                ],
+                "optional_artifacts": [],
+                "metadata_schema": {
+                    "type": "dict",
+                    "required_keys": {
+                        "topic": {
+                            "type": "string"
+                        },
+                        "date": {
+                            "type": "datetime"
+                        },
+                        "number": {
+                            "type": "integer"
+                        },
+                        "due": {
+                            "type": "datetime"
+                        }
+                    }
+                },
+                "allow_unspecified_artifacts": false,
+                "is_ordered": true
+            },
+            "publications": {
+                "01-intro": {
+                    "metadata": {
+                        "topic": "Introduction",
+                        "date": "2022-09-23 15:00:00",
+                        "number": 1,
+                        "due": "2022-09-24 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "02-pandas": {
+                    "metadata": {
+                        "topic": "Pandas",
+                        "date": "2022-09-30 15:00:00",
+                        "number": 2,
+                        "due": "2022-10-01 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "03-hyp-testing-combining-df": {
+                    "metadata": {
+                        "topic": "Plotting",
+                        "date": "2022-10-07 15:00:00",
+                        "number": 3,
+                        "due": "2022-10-08 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "04-combining_df": {
+                    "metadata": {
+                        "topic": "Combining DataFrames",
+                        "date": "2022-10-14 15:00:00",
+                        "number": 4,
+                        "due": "2022-10-15 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "04-visualization": {
+                    "metadata": {
+                        "topic": "Combining DataFrames",
+                        "date": "2022-10-21 15:00:00",
+                        "number": 5,
+                        "due": "2022-10-22 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "05-scraping": {
+                    "metadata": {
+                        "topic": "Plotting",
+                        "date": "2022-11-04 15:00:00",
+                        "number": 7,
+                        "due": "2022-11-05 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "06-regex-nlp": {
+                    "metadata": {
+                        "topic": "Plotting",
+                        "date": "2022-11-18 15:00:00",
+                        "number": 7,
+                        "due": "2022-11-19 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "07-linear-reg-features": {
+                    "metadata": {
+                        "topic": "sklearn",
+                        "date": "2021-11-19 00:00:00",
+                        "number": 8,
+                        "due": "2021-11-20 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "07-scraping-regex-old": {
+                    "metadata": {
+                        "topic": "Plotting",
+                        "date": "2021-12-03 00:00:00",
+                        "number": 7,
+                        "due": "2021-12-04 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "08-sklearn": {
+                    "metadata": {
+                        "topic": "sklearn",
+                        "date": "2021-11-19 00:00:00",
+                        "number": 8,
+                        "due": "2021-11-20 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "09-sklearn": {
+                    "metadata": {
+                        "topic": "sklearn",
+                        "date": "2021-11-19 00:00:00",
+                        "number": 8,
+                        "due": "2021-11-20 23:59:00"
+                    },
+                    "artifacts": {}
+                }
+            }
+        },
+        "labs": {
+            "publication_schema": {
+                "required_artifacts": [
+                    "assignment"
+                ],
+                "optional_artifacts": [],
+                "metadata_schema": {
+                    "type": "dict",
+                    "required_keys": {
+                        "topic": {
+                            "type": "string"
+                        },
+                        "released": {
+                            "type": "datetime"
+                        },
+                        "number": {
+                            "type": "integer"
+                        },
+                        "due": {
+                            "type": "datetime"
+                        }
+                    }
+                },
+                "allow_unspecified_artifacts": false,
+                "is_ordered": true
+            },
+            "publications": {
+                "01-intro": {
+                    "metadata": {
+                        "topic": "Introduction",
+                        "released": "2022-09-26 23:59:00",
+                        "number": 1,
+                        "due": "2022-10-03 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "02-pandas": {
+                    "metadata": {
+                        "topic": "Pandas",
+                        "released": "2022-10-03 23:59:00",
+                        "number": 2,
+                        "due": "2022-10-10 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "03-hyp-dataframes": {
+                    "metadata": {
+                        "topic": "Hypothesis Testing",
+                        "released": "2022-10-10 23:59:00",
+                        "number": 3,
+                        "due": "2022-10-17 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "04-pivot-perm-missing": {
+                    "metadata": {
+                        "topic": "Hypothesis Testing",
+                        "released": "2022-10-17 23:59:00",
+                        "number": 4,
+                        "due": "2022-10-24 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "05-imputation": {
+                    "metadata": {
+                        "topic": "Missingness and Imputation",
+                        "released": "2022-10-24 23:59:00",
+                        "number": 5,
+                        "due": "2022-10-31 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "06-http": {
+                    "metadata": {
+                        "topic": "HTTP and HTML",
+                        "released": "2022-10-31 23:59:00",
+                        "number": 6,
+                        "due": "2022-11-07 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "07-regex": {
+                    "metadata": {
+                        "topic": "Regex",
+                        "released": "2022-11-07 23:59:00",
+                        "number": 7,
+                        "due": "2022-11-14 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "08-features": {
+                    "metadata": {
+                        "topic": "Features",
+                        "released": "2022-11-14 23:59:00",
+                        "number": 8,
+                        "due": "2022-11-21 23:59:00"
+                    },
+                    "artifacts": {}
+                },
+                "09-sklearn": {
+                    "metadata": {
+                        "topic": "Sklearn",
+                        "released": "2022-11-21 23:59:00",
+                        "number": 9,
+                        "due": "2021-12-02 23:59:00"
+                    },
+                    "artifacts": {}
+                }
+            }
+        }
+    }
+}
