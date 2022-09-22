@@ -11,7 +11,7 @@ def safe_download(url):
 
     # create data dir if doesn't exist
     if not os.path.exists('data'):
-        os.mkdir('data')
+        os.mkdir('./data')
 
     # only download if the file exists
     if not os.path.exists(fname):
