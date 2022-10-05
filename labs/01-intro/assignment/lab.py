@@ -61,7 +61,12 @@ def median_vs_mean(nums):
     >>> median_vs_mean([1, 8, 9])
     False
     '''
-    ...
+    num_arrs = np.array(nums)
+
+    if np.median(num_arrs) <= np.mean(num_arrs):
+        return True
+    else:
+        return False
 
 
 # ---------------------------------------------------------------------
@@ -71,7 +76,7 @@ def median_vs_mean(nums):
 
 def same_diff_ints(ints):
     """
-    same_diff_ints tests whether a list contains
+    same_diff_ints tests whether a list containcds
     two list elements i positions apart, whose absolute 
     difference as integers is also i.
     :param ints: a list of integers
@@ -83,7 +88,16 @@ def same_diff_ints(ints):
     >>> same_diff_ints([1, 3, 5, 7, 9])
     False
     """
-    ...
+    arr = np.array(ints)
+    for i in range(1,len(ints)-1):
+        diffs = np.absolute(np.diff(arr, n=i))
+        if i in diffs:
+            return True
+    return False
+
+
+
+
 
 
 # ---------------------------------------------------------------------
@@ -110,7 +124,15 @@ def n_prefixes(s, n):
     >>> n_prefixes('Justin', 5)
     'JustiJustJusJuJ'
     """
-    ...
+    output = []
+    for i in range(n):
+        output.append(s[:i+1])
+
+    out_str = ''.join(output[::-1])
+    return out_str
+        
+        
+
 
 
 # ---------------------------------------------------------------------
@@ -134,7 +156,17 @@ def exploded_numbers(ints, n):
     >>> exploded_numbers([9, 99], 3)
     ['006 007 008 009 010 011 012', '096 097 098 099 100 101 102']
     """
-    ...
+
+    out = []
+    max_len = len(str(max([num + n for num in ints])))
+    for int in ints:
+        temp = [str(num).zfill(max_len) for num in range(int-n, int+(n+1))]
+        out.append(' '.join(temp))
+
+    return out
+
+
+    
 
 
 # ---------------------------------------------------------------------
@@ -153,7 +185,14 @@ def last_chars(fh):
     >>> last_chars(open(fp))
     'hrg'
     """
-    ...
+    out = ''
+    for line in fh:
+        if line.strip('\n'):
+            out += line.strip('\n')[-1]
+        else:
+            continue
+    return out
+
 
 
 # ---------------------------------------------------------------------
@@ -178,7 +217,9 @@ def add_root(A):
     >>> np.isclose(out[3], 7 + np.sqrt(3))
     True
     """
-    ...
+    rooted = np.array(np.sqrt(range(len(A))))
+    return A + rooted
+    
 
 def where_square(A):
     """
@@ -197,8 +238,8 @@ def where_square(A):
     >>> out[2]
     True
     """
-    ...
-
+    B = np.square(np.floor(np.sqrt(A)))
+    return A==B
 
 # ---------------------------------------------------------------------
 # QUESTION 7
@@ -223,7 +264,9 @@ def growth_rates(A):
     >>> out.max() == 0.03
     True
     """
-    ...
+    b = np.copy(A)
+
+    return np.round((A[1:]-b[:-1])/b[:-1],2)
 
 def with_leftover(A):
     """
@@ -242,7 +285,11 @@ def with_leftover(A):
     >>> out == 1
     True
     """
-    ...
+    a = np.array([3,3,3,3])
+    x = np.where(np.cumsum(20%a) >= a)
+    if np.all(x == False):
+        print(-1)
+    return x[0][0]
 
 
 # ---------------------------------------------------------------------
@@ -267,7 +314,31 @@ def salary_stats(salary):
     >>> isinstance(out.loc['duplicates'], bool)
     True
     """
-    ...
+    num_players = salary['Player'].count()
+    num_teams = salary.groupby('Team').count().shape[0]
+    total_salary = salary['Salary'].sum()
+    highest_salary = salary['Salary'].max()
+    avg_los = round(salary.loc[salary['Team'] == \
+            'Los Angeles Lakers']['Salary'].mean(),2)
+    fifth_lowest_tmp = salary.sort_values(by=['Salary']).iloc[4]
+    fifth_lowest = fifth_lowest_tmp['Player'] + ', ' + \
+                fifth_lowest_tmp['Team']
+    temp = salary.assign(lastname= \
+            salary['Player'].apply(lambda x: x.split(' ')[1]))
+    duplicates = temp['lastname'].nunique() != salary.shape[0]
+    total_highest = salary[salary['Team'] == \
+                    salary.sort_values(by=['Salary'], ascending=False)\
+                    .iloc[0]['Team']]['Salary'].sum()
+    dict = {'num_players': num_players,
+            'num_teams': num_teams,
+            'total_salary': total_salary,
+            'highest_salary': highest_salary,
+            'avg_los': avg_los,
+            'fifth_lowest': fifth_lowest,
+            'duplicates': duplicates,
+            'total_highest': total_highest}
+    return pd.Series(data=dict)
+    
 
 
 # ---------------------------------------------------------------------
@@ -302,4 +373,22 @@ def parse_malformed(fp):
     >>> (dg == df.iloc[9:13]).all().all()
     True
     """
-    ...
+    out_df = pd.DataFrame(columns = 
+        ['first', 'last', 'weight', 'height', 'geo'])
+
+    with open(fp, "r") as f:
+        for i in range(1):
+            next(f)
+        i=0
+        for line in f:
+            line = line.replace('"','').replace('\n','').split(',')
+            out_df.loc[i] = [line[0], 
+                            line[1], 
+                            line[2], 
+                            line[3], 
+                            str(line[4]) + ',' + str(line[5])]
+            i+=1
+    out_df['height'] = pd.to_numeric(out_df['height'])
+    out_df['weight'] = pd.to_numeric(out_df['weight'])
+
+    return out_df
