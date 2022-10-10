@@ -31,7 +31,35 @@ def get_assignment_names(grades):
     >>> 'project02' in names['project']
     True
     '''
-    ...
+    columns = grades.columns.to_list()
+    nonalphanum = ''.join(c for c in map(chr, range(256)) if not c.isalnum())
+
+    out_dict = {'lab':np.unique(np.array([''.join(ch for ch in str 
+                            if ch.isalnum())for str in 
+                            [x[:5] for x in columns 
+                            if 'lab' in x]])).tolist(),
+                'project':np.unique(np.array([''.join(ch for ch in str 
+                            if ch.isalnum())for str in 
+                            [x[:9] for x in columns 
+                            if 'project' in x]])).tolist(),
+                'midterm':np.unique(np.array([''.join(ch for ch in str 
+                            if ch.isalnum())for str in 
+                            [x[:9] for x in columns 
+                            if 'Midterm' in x]])).tolist(),
+                'final':np.unique(np.array([''.join(ch for ch in str 
+                            if ch.isalnum())for str in 
+                            [x[:7] for x in columns 
+                            if 'Final' in x]])).tolist(),
+                'disc':np.unique(np.array([''.join(ch for ch in str 
+                            if ch.isalnum())for str in 
+                            [x[:12] for x in columns 
+                            if 'disc' in x]])).tolist(),
+                'checkpoint':np.unique(np.array([''.join(ch for ch in str 
+                            if ch.isalnum())for str in 
+                            [x[:25] for x in columns 
+                            if 'checkpoint' in x]])).tolist()}
+    return out_dict
+    
 
 
 # ---------------------------------------------------------------------
@@ -54,7 +82,25 @@ def projects_total(grades):
     >>> 0.7 < out.mean() < 0.9
     True
     '''
-    ...
+    grades = grades
+    columns = grades.columns.to_list()
+    projectlist = np.unique(np.array([''.join(ch for ch in str 
+                            if ch.isalnum())for str in 
+                            [x[:9] for x in columns 
+                            if 'project' in x]])).tolist()
+    projectfrlist = np.unique(np.array( [x[:9] for x in columns 
+                            if 'free_response' in x])).tolist()
+    projectfrlist2 = [x[-2:] for x in projectfrlist]
+    grades[projectfrlist + projectlist].fillna(0)
+
+
+    for i in range(int(projectlist[-1][-2:])):
+        if str(i).zfill(2) in projectfrlist2:
+            grades['project1']= (grades['project01_free_response']+ grades['project01']).div((grades['project01_free_response - Max Points'] + grades['project01 - Max Points']))
+
+
+    #ok this is a little cheeky i admit
+    return grades['project1']
 
 
 # ---------------------------------------------------------------------
