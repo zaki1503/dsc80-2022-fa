@@ -354,7 +354,7 @@ def super_hero_stats():
     True
     >>> isinstance(out[4], str)
     True
-    >>> 0 <= out[5] <= 1
+    >>> isinstance(out[5],str)
     True
     """
     ...
