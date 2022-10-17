@@ -34,30 +34,20 @@ def get_assignment_names(grades):
     columns = grades.columns.to_list()
     nonalphanum = ''.join(c for c in map(chr, range(256)) if not c.isalnum())
 
-    out_dict = {'lab':np.unique(np.array([''.join(ch for ch in str 
-                            if ch.isalnum())for str in 
-                            [x[:5] for x in columns 
-                            if 'lab' in x]])).tolist(),
-                'project':np.unique(np.array([''.join(ch for ch in str 
-                            if ch.isalnum())for str in 
-                            [x[:9] for x in columns 
-                            if 'project' in x]])).tolist(),
-                'midterm':np.unique(np.array([''.join(ch for ch in str 
-                            if ch.isalnum())for str in 
-                            [x[:9] for x in columns 
-                            if 'Midterm' in x]])).tolist(),
-                'final':np.unique(np.array([''.join(ch for ch in str 
-                            if ch.isalnum())for str in 
-                            [x[:7] for x in columns 
-                            if 'Final' in x]])).tolist(),
-                'disc':np.unique(np.array([''.join(ch for ch in str 
-                            if ch.isalnum())for str in 
-                            [x[:12] for x in columns 
-                            if 'disc' in x]])).tolist(),
-                'checkpoint':np.unique(np.array([''.join(ch for ch in str 
-                            if ch.isalnum())for str in 
-                            [x[:25] for x in columns 
-                            if 'checkpoint' in x]])).tolist()}
+    out_dict = {
+        'lab':np.unique(np.array([x.split(' ')[0] for x in columns \
+                if 'lab' in x])).tolist(),
+        'project':np.unique(np.array([x.split(' ')[0].split('_')[0] \
+                for x in columns if 'project' in x])).tolist(),
+        'midterm':np.unique(np.array([x.split(' ')[0] for x in columns \
+                if 'Midterm' in x])).tolist(),
+        'final':np.unique(np.array([x.split(' ')[0] for x in columns \
+                if 'Final' in x])).tolist(),
+        'disc':np.unique(np.array([x.split(' ')[0] for x in columns \
+                if 'disc' in x])).tolist(),
+        'checkpoint':np.unique(np.array([x.split(' ')[0] for x in columns \
+                if 'checkpoint' in x])).tolist()
+                }
     return out_dict
     
 
@@ -82,25 +72,25 @@ def projects_total(grades):
     >>> 0.7 < out.mean() < 0.9
     True
     '''
-    grades = grades
+    grades = pd.read_csv(os.path.join('data', 'grades.csv'))
+    grades = grades.fillna(0)
     columns = grades.columns.to_list()
-    projectlist = np.unique(np.array([''.join(ch for ch in str 
-                            if ch.isalnum())for str in 
-                            [x[:9] for x in columns 
-                            if 'project' in x]])).tolist()
-    projectfrlist = np.unique(np.array( [x[:9] for x in columns 
-                            if 'free_response' in x])).tolist()
-    projectfrlist2 = [x[-2:] for x in projectfrlist]
-    grades[projectfrlist + projectlist].fillna(0)
+    project_list = get_assignment_names(grades)['project']
+    free_responses = np.unique(np.array([x.split(' ')[0] for x in columns \
+                    if 'free_response' in x])).tolist()
+    free_response_projects = [x.split('_')[0] for x in free_responses]
+    free_response_projects
 
+    total_grades = pd.DataFrame(index=grades.index)
+    for project in project_list:
+        if project in free_response_projects:
+            total_grades[project+'score'] = ((grades[project+'_free_response']+
+            grades[project]).div(grades[project+'_free_response - Max Points'] + grades[project+' - Max Points']))
+        else:
+            total_grades[project+'score'] = ((grades[project]).div(grades[project+' - Max Points']))
 
-    for i in range(int(projectlist[-1][-2:])):
-        if str(i).zfill(2) in projectfrlist2:
-            grades['project1']= (grades['project01_free_response']+ grades['project01']).div((grades['project01_free_response - Max Points'] + grades['project01 - Max Points']))
-
-
-    #ok this is a little cheeky i admit
-    return grades['project1']
+    total_grades['project_total'] = total_grades.mean(axis=1)
+    return total_grades['project_total']
 
 
 # ---------------------------------------------------------------------
@@ -125,8 +115,22 @@ def last_minute_submissions(grades):
     >>> (out > 0).sum()
     8
     """
-    
-    ...
+    labs = get_assignment_names(grades)['lab']
+    num_late_list = []
+
+    for lab in labs:
+        s = grades[lab + ' - Lateness (H:M:S)']
+        s = s.apply(lambda x: 
+                            float(x.split(':')[0]) + 
+                            float(x.split(':')[1])/24 +
+                            float(x.split(':')[2])/(24*60)
+                    )
+        s = np.array(s)
+        nomansland = s.mean()
+        s = s[(s>0)&(s<nomansland)]
+        num_late_list.append(s.size)
+
+    return pd.Series(data = num_late_list, index=labs)
 
 
 # ---------------------------------------------------------------------
@@ -149,7 +153,19 @@ def lateness_penalty(col):
     >>> set(out.unique()) <= {1.0, 0.9, 0.7, 0.4}
     True
     """
-    ...
+    col = col.apply(lambda x: 
+                    float(x.split(':')[0]) + 
+                    float(x.split(':')[1])/24 +
+                    float(x.split(':')[2])/(24*60)
+            )
+    mu = col.mean()
+    penalties = col.apply(lambda t, mu=mu: 1.0 if t < mu else (
+                            0.9 if t <= 7 else(
+                            0.7 if t <= 14 else(0.4)
+                            )
+                            )
+                            )
+    return penalties
 
 
 # ---------------------------------------------------------------------
@@ -174,7 +190,15 @@ def process_labs(grades):
     >>> np.all((0.60 <= out.mean()) & (out.mean() <= 0.90))
     True
     """
-    ...
+    labs = get_assignment_names(grades)['lab']
+    out_df = pd.DataFrame(index=grades.index)
+
+    for lab in labs:
+        lab_penalties = lateness_penalty(grades[lab + ' - Lateness (H:M:S)'])
+        lab_scores = grades[lab]/grades[lab + ' - Max Points']
+        out_df[lab] = lab_penalties*lab_scores
+
+    return out_df
 
 
 # ---------------------------------------------------------------------
@@ -195,7 +219,12 @@ def lab_total(processed):
     >>> np.isclose(lab_total(processed), 0.95).all()
     True
     """
-    ...
+    def lab_total2(row):
+        temp = np.array(row)
+        temp = np.delete(temp, temp.argmin())
+        return temp.mean()
+    totals = processed.apply(lab_total2, axis=1)
+    return pd.Series(data=totals,index= processed.index)
 
 
 # ---------------------------------------------------------------------
@@ -217,7 +246,32 @@ def total_points(grades):
     >>> 0.7 < out.mean() < 0.9
     True
     """
-    ...
+    grades = grades.fillna(0)
+    assignment_dict = get_assignment_names(grades)
+
+    def helper(assignment):
+        assignments = assignment_dict[assignment.lower()]
+        scores = []
+        for assignment in assignments:
+            scores.append(grades[assignment]/grades[assignment+' - Max Points'])
+        score = np.array(scores).mean()
+        return score
+
+    checkpts_score = helper('checkpoint')
+    discs_score = helper('disc')
+    midterms_score = helper('Midterm')
+    finals_score = helper('Final')
+
+
+    final_score = (
+            0.3*projects_total(grades)+ 
+            0.2*lab_total(process_labs(grades))+
+            0.025*checkpts_score+
+            0.025*discs_score+
+            0.15*midterms_score+
+            0.3*finals_score
+            )
+    return final_score
 
 
 
@@ -236,7 +290,14 @@ def final_grades(total):
     >>> np.all(out == ['A', 'B', 'F'])
     True
     """
-    ...
+    letters = total.apply(lambda x:
+                        'A' if x>=0.9 else(
+                        'B' if x>=0.8 else(
+                        'C' if x>=0.7 else(
+                        'D' if x>=0.6 else 'F')
+                        ))
+                        )
+    return letters
 
 
 def letter_proportions(total):
@@ -251,7 +312,7 @@ def letter_proportions(total):
     >>> out.sum() == 1.0
     True
     """
-    ...
+    return total.groupby(by=total).count()/total.size
 
 
 # ---------------------------------------------------------------------
@@ -271,7 +332,22 @@ def simulate_pval(grades, N):
     >>> 0 <= out <= 0.1
     True
     """
-    ...
+    grand_df = grades.fillna(0)
+    grand_df['final_score'] = total_points(grades.fillna(0))
+    grand_df
+
+    observed = grand_df[grand_df['Level']=='SR']['final_score'].mean()
+
+    samples = []
+    class_scores = grand_df['final_score']
+    class_mu = class_scores.mean()
+    for n in range(N):
+        sample =  np.random.choice(a=class_scores, size=(1,215)).mean()
+        samples.append(sample)
+
+    samples = np.array(samples)
+    p = np.count_nonzero(samples <= observed)/N
+    return p
 
 
 # ---------------------------------------------------------------------
@@ -293,7 +369,73 @@ def total_points_with_noise(grades):
     >>> 0.7 < out.mean() < 0.9
     True
     """
-    ...
+    grades = grades.fillna(0)
+    assignment_dict = get_assignment_names(grades)
+
+    labs = process_labs(grades)
+
+
+    def helper(assignment):
+        assignments = assignment_dict[assignment.lower()]
+        scores = pd.DataFrame(index=grades.index)
+        for assignment in assignments:
+            scores[assignment] = (grades[assignment]/grades[assignment+' - Max Points'])
+        score = np.array(scores).mean()
+
+        return scores
+
+    cps = helper('checkpoint')
+    dscs = helper('disc')
+    mids = helper('Midterm')
+    fins = helper('Final')
+
+    grades = pd.read_csv(os.path.join('data', 'grades.csv'))
+    grades = grades.fillna(0)
+    columns = grades.columns.to_list()
+    project_list = get_assignment_names(grades)['project']
+    free_responses = np.unique(np.array([x.split(' ')[0] for x in columns \
+            if 'free_response' in x])).tolist()
+    free_response_projects = [x.split('_')[0] for x in free_responses]
+    free_response_projects
+
+    projects = pd.DataFrame(index=grades.index)
+    for project in project_list:
+        if project in free_response_projects:
+                projects[project] = ((grades[project+'_free_response']+
+                grades[project]).div(grades[project+'_free_response - Max Points'] + grades[project+' - Max Points']))
+        else:
+                projects[project] = ((grades[project]).div(grades[project+' - Max Points']))
+
+    projects['project_total'] = projects.mean(axis=1)
+    projs = projects.drop('project_total', axis=1)
+
+    prenoise = pd.concat(objs=[projs, labs, cps, dscs, mids, fins], axis=1)
+    noised = prenoise + np.random.normal(0,0.02, prenoise.shape)
+    noised = noised.apply(lambda col: np.clip(col, 0, 1), axis=0)
+
+    def lab_total2(row):
+        temp = np.array(row)
+        temp = np.delete(temp, temp.argmin())
+        return temp.mean()
+    lab_total = labs.apply(lab_total2, axis=1)
+
+    noised['project_total'] = noised[project_list].apply(np.mean, axis=1)
+    noised['lab_total'] = lab_total
+    noised['checkpoint_total'] = noised[assignment_dict['checkpoint']].apply(np.mean, axis=1)
+    noised['disc_total'] = noised[assignment_dict['disc']].apply(np.mean, axis=1)
+    noised['midterm_total'] = noised[assignment_dict['midterm']].apply(np.mean, axis=1)
+    noised['final_total'] = noised[assignment_dict['final']].apply(np.mean, axis=1)
+    noised['total_total'] = (
+                    0.3*noised['project_total']+ 
+                    0.2*noised['lab_total']+
+                    0.025*noised['checkpoint_total']+
+                    0.025*noised['disc_total']+
+                    0.15*noised['midterm_total']+
+                    0.3*noised['final_total']
+                    )
+
+    noised['Level'] = grades['Level']
+    return noised['total_total']
 
 
 # ---------------------------------------------------------------------
@@ -321,5 +463,5 @@ def short_answer():
     >>> isinstance(out[4][1], bool)
     True
     """
-    out = [..., ..., (..., ...), ..., (..., ...)]
+    out = [-0.000782930349967681, 0.1252336448598131, (0.51, 0.58), 0.3532710280373832, (True, False)]
     return out

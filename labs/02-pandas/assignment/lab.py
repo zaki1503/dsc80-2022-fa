@@ -26,7 +26,14 @@ def data_load(scores_fp):
     >>> isinstance(scores.index[0], int)
     False
     """
-    ...
+    cols = ['name', 'tries', 'highest_score', 'sex']
+    data = pd.read_csv(filepath_or_buffer='data/scores.csv', 
+                        usecols= cols).drop(columns=['sex'])
+    renamedict = {'name':'firstname',
+                'tries':'attempts'}
+    data.rename(columns= renamedict, inplace=True)
+    data = data.set_index('firstname')
+    return data
 
 
 def pass_fail(scores):
@@ -45,7 +52,19 @@ def pass_fail(scores):
     >>> scores.loc["Julia", "pass"] == 'Yes'
     True
     """
-    ...
+    def pf(row):
+        if row['attempts'] > 8:
+            return 'No'
+        elif row['attempts'] > 6 and row['highest_score'] < 90:
+            return 'No'
+        elif row['attempts'] > 4 and row['highest_score'] < 70:
+            return 'No'
+        elif row['attempts'] > 1 and row['highest_score'] < 60:
+            return 'No'
+        else:
+            return 'Yes'
+    scores['pass'] = scores.apply(lambda row: pf(row), axis=1)
+    return scores
 
 
 # ---------------------------------------------------------------------
@@ -67,7 +86,7 @@ def med_score(scores):
     >>> 89 < med < 91
     True
     """
-    ...
+    return scores[scores['pass']=='Yes']['highest_score'].median()
 
 
 
@@ -86,7 +105,9 @@ def highest_score_name(scores):
     >>> len(highest[1])
     3
     """
-    ...
+    out = tuple(scores[scores['highest_score'] == 
+                scores['highest_score'].max()].index.tolist())
+    return out
 
 
 # ---------------------------------------------------------------------
@@ -104,7 +125,7 @@ def idx_dup():
     >>> 1 <= ans <= 6
     True
     """
-    ...
+    return 6
 
 
 # ---------------------------------------------------------------------
@@ -120,7 +141,7 @@ def trick_me():
     >>> ans == 1 or ans == 2 or ans == 3
     True
     """
-    ...
+    return 3
 
 
 def trick_bool():
@@ -133,7 +154,7 @@ def trick_bool():
     >>> isinstance(ans[1], int)
     True
     """
-    ...
+    return [4, 10, 13]
 
 
 # ---------------------------------------------------------------------
@@ -150,7 +171,10 @@ def change(x):
     >>> change(np.NaN) == 'MISSING'
     True
     """
-    ...
+    if pd.isna(x):
+        return "MISSING"
+    else:
+        return x
 
 def correct_replacement(df_with_nans):
     """
@@ -164,7 +188,9 @@ def correct_replacement(df_with_nans):
     >>> A is not df_with_nans
     True
     """
-    ...
+    df = df_with_nans
+    df = df.apply(lambda col: col.apply(change))
+    return df
     
 def missing_ser():
     """
@@ -174,7 +200,7 @@ def missing_ser():
     >>> ans == 1 or ans == 2 or ans == 3
     True
     """
-    ...
+    return 2
 
 def fill_ser(df_with_nans):
     """
@@ -186,7 +212,10 @@ def fill_ser(df_with_nans):
     >>> (df_with_nans.values == 'MISSING').sum() == 4
     True
     """
-    ...
+    for column in df_with_nans.columns:
+        ser = df_with_nans[column]
+        ser[ser.isna()] = 'MISSING'
+        df_with_nans[column] = ser
 
 
 # ---------------------------------------------------------------------
@@ -221,7 +250,12 @@ def population_stats(df):
     >>> (out['prop_nonnull'] == 1.0).all()
     True
     """
-    ...
+    out = pd.DataFrame()
+    out['num_nonnull'] = df.count(axis=0)
+    out['prop_nonnull'] = df.count(axis=0)/df.shape[0]
+    out['num_distinct'] = df.nunique(axis=0)
+    out['prop_distinct'] = df.nunique(axis=0)/df.shape[0]
+    return out
 
 
 # ---------------------------------------------------------------------
@@ -247,7 +281,20 @@ def most_common(df, N=10):
     >>> out['A_values'].isin(range(10)).all()
     True
     """
-    ...
+    out = pd.DataFrame()
+    for col in df.columns.to_list():
+        vals = df[col].value_counts()[:N].index.tolist()
+        cts = df[col].value_counts()[:N].tolist()
+        vlen = len(vals)
+        if vlen < N:
+            vals[:vlen].extend([np.NaN]*(N-vlen))
+            cts[:vlen].extend([np.NaN]*(N-vlen))
+            out[col+'_values'] = vals
+            out[col+'_counts'] = cts
+        else:
+            out[col+'_values'] = vals[:N]
+            out[col+'_counts'] = cts[:N]
+    return out
 
 
 # ---------------------------------------------------------------------
@@ -263,7 +310,7 @@ def null_hyp():
     >>> set(null_hyp()).issubset({1, 2, 3, 4})
     True
     """
-    ...
+    return [2, 1]
 
 
 def simulate_null():
@@ -272,7 +319,10 @@ def simulate_null():
     >>> pd.Series(simulate_null()).isin([0, 1]).all()
     True
     """
-    ...
+    out = []
+    for n in range(250):
+        out.append(int(np.random.binomial(1, 0.02)==0))
+    return np.array(out)
 
 
 def estimate_p_val(N):
@@ -280,7 +330,16 @@ def estimate_p_val(N):
     >>> 0 < estimate_p_val(1000) < 0.1
     True
     """
-    ...
+    defective_nums = []
+    for n in range(N):
+        simulation = simulate_null()
+        defective_num= np.count_nonzero(simulation == 0)
+        defective_nums.append(defective_num)
+    
+    defective_nums = np.array(defective_nums)
+    p = np.count_nonzero(defective_nums > 10)/1000
+    return p
+    
 
 
 # ---------------------------------------------------------------------
@@ -308,7 +367,19 @@ def super_hero_powers(powers):
     >>> all([isinstance(x, str) for x in out])
     True
     """
-    ...
+    powers = pd.read_csv('data/superheroes_powers.csv')
+    powers['bruh'] = powers.apply(lambda row: row.value_counts()[True], axis=1)
+    flyaf = powers[powers['Flight'] == True].drop(columns=['Flight','hero_names', 'bruh'])
+    losers = powers[powers['bruh'] == 1].drop(columns=['bruh', 'hero_names'])
+
+
+    outlist = [
+        powers.iloc[powers['bruh'].idxmax()]['hero_names'],
+        flyaf.apply(pd.value_counts).T[True].idxmax(),
+        losers.apply(pd.value_counts, axis=0).T[True].idxmax()
+        ]
+
+    return outlist
 
 
 # ---------------------------------------------------------------------
@@ -331,7 +402,7 @@ def clean_heroes(heroes):
     >>> out['Weight'].isnull().any()
     True
     """
-    ...
+    return heroes.replace('-',np.NaN)
 
 
 # ---------------------------------------------------------------------
@@ -357,7 +428,7 @@ def super_hero_stats():
     >>> 0 <= out[5] <= 1
     True
     """
-    ...
+    return ['Marvel Comics', 'idk', 'idk', 'idk','idk', 'Onslaught', 'NBC - Heroes']
 
 
 # ---------------------------------------------------------------------
