@@ -3,6 +3,7 @@
 
 import os
 import io
+from typing_extensions import reveal_type
 import pandas as pd
 import numpy as np
 
@@ -20,7 +21,7 @@ def car_null_hypoth():
     >>> set(car_null_hypoth()) <= set(range(1, 7))
     True
     """
-    ...
+    return (3,5)
 
 
 def car_alt_hypoth():
@@ -31,7 +32,7 @@ def car_alt_hypoth():
     >>> set(car_alt_hypoth()) <= set(range(1, 7))
     True
     """
-    ...
+    return(2,6)
 
 def car_test_stat():
     """
@@ -41,7 +42,7 @@ def car_test_stat():
     >>> set(car_test_stat()) <= set(range(1, 5))
     True
     """
-    ...
+    return (1,4)
 
 def car_p_value():
     """
@@ -51,7 +52,7 @@ def car_p_value():
     >>> car_p_value() in set(range(1, 6))
     True
     """
-    ...
+    return 3
 
 
 # ---------------------------------------------------------------------
@@ -72,7 +73,36 @@ def clean_universities(df):
     >>> cleaned['nation'].nunique() == 59
     True
     """
-    ...
+    datatypedict = {
+    'broad_impact': np.int64,
+    'national_rank_cleaned': np.int64
+                }
+
+    dfc = df
+    dfc['institution'] = dfc['institution'].replace(r'\n',', ', regex=True)
+    dfc['institution'] = dfc['institution'].replace(r'\r,',',', regex=True)
+    dfc['national_rank_cleaned'] = dfc['national_rank'].apply(lambda x: x.split(', ')[1])
+
+    dfc['nation'] = dfc['national_rank'].apply(lambda x: x.split(', ')[0])
+
+    dfc= dfc.replace('Czechia', 'Czech Republic')
+    dfc= dfc.replace('USA', 'United States')
+    dfc= dfc.replace('UK', 'United Kingdom')
+    dfc = dfc.astype(datatypedict)
+
+    def r_1_pub(row):
+        if pd.isnull(row['control']) \
+            or pd.isnull(row['city']) \
+            or pd.isnull(row['state']):
+            return False
+        elif row['control'] == 'Public':
+            return True
+        else: 
+            return False
+
+    dfc['is_r1_public'] = dfc.apply(r_1_pub, axis=1)
+    dfc = dfc.drop(columns=['national_rank'])
+    return dfc
 
 def university_info(cleaned):
     """
@@ -90,7 +120,30 @@ def university_info(cleaned):
     >>> (info[1] >= 0) & (info[1] <= 1)
     True
     """
-    ...
+    dfc = cleaned
+    boolstates = pd.Series(dfc[pd.notnull(dfc['state'])].groupby('state')\
+                        .count()['institution'] >= 3)
+    statelist = boolstates[boolstates== True].index
+
+    L = dfc[dfc['state'].isin(statelist.to_list())].\
+            groupby('state').mean()['score'].idxmin()
+
+    propfac = dfc[(dfc['world_rank'] <= 100) & 
+                (dfc['quality_of_faculty'] <= 100)].shape[0]/100
+
+    L2 = dfc[dfc['national_rank_cleaned'] == 1].\
+            set_index('institution')['world_rank'].idxmax()
+
+    dfc[pd.notnull(dfc['state'])].groupby(['state', 'control']).count()['institution'].reset_index()
+
+    dfc2 = dfc[pd.notnull(dfc['state'])]
+    ser = dfc2['control'].apply(lambda x: 0 if x == 'Public' else 1)
+    dfc2 = dfc2.assign(control= ser)
+
+    priv50plus = pd.Series(dfc2.groupby('state').mean()['control'] >= 0.5)
+    privstatenum = priv50plus[priv50plus].size
+
+    return [L, propfac, privstatenum,L2]
 
 
 
@@ -115,7 +168,22 @@ def std_scores_by_nation(cleaned):
     >>> np.all(abs(out.select_dtypes(include='number').mean()) < 10**-7)  # standard units should average to 0!
     True
     """
-    ...
+    dfc3 = cleaned[['institution', 'nation', 'score']]
+
+    natsdevs = dfc3.groupby('nation').std(ddof=0)
+    natmeans = dfc3.groupby('nation').mean()
+
+    def standardize_score(row):
+        nation = row['nation']
+        score = row['score']
+        std = natsdevs.loc[nation]
+        mean = natmeans.loc[nation]
+        out = (score-mean)/std
+        return out
+    copy = dfc3.copy()
+    dfc3 = dfc3.assign(score = copy.apply(standardize_score, axis=1))
+    return dfc3
+
     
 
 def su_and_spread():
@@ -128,7 +196,7 @@ def su_and_spread():
     >>> isinstance(out[1], str)
     True
     """
-    ...
+    return [2, 'Malaysia']
 
 
 # ---------------------------------------------------------------------
@@ -153,7 +221,28 @@ def read_linkedin_survey(dirname):
     ...
     FileNotFoundError: ... 'nonexistentfile'
     """
-    ...
+    csvdirlist = os.listdir(dirname)
+    big = pd.DataFrame(pd.read_csv(os.path.join(dirname, csvdirlist[0])))
+    big['fullname'] = big['first name'] + ' ' + big['last name']
+    big
+    for csv in csvdirlist[1:]:
+        df = pd.read_csv(os.path.join(dirname, csv))
+        df.columns = df.columns.str.lower()
+        df.columns = df.columns.str.replace('_', ' ')
+        df['fullname'] = df['first name']  + ' ' +  df['last name']
+        big = pd.concat([big, df], axis=0)
+    
+    big = big.set_index('fullname')
+    big = big.fillna('')
+    out = big[[
+            'first name', 
+            'last name', 
+            'current company', 
+            'job title', 
+            'email', 
+            'university'
+            ]]
+    return out
 
 
 def com_stats(df):
@@ -174,7 +263,18 @@ def com_stats(df):
     >>> isinstance(out[2], str)
     True
     """
-    ...
+    ohionurses = df[(df['university'].str.contains('Ohio'))
+        & (df['job title'].str.contains('Nurse'))
+        ].shape[0]/df[df['university'].str.contains('Ohio')].shape[0]
+    numeng = df[df['job title'].str.endswith('Engineer')].shape[0]
+    idxlong = pd.DataFrame(
+        columns = [''],
+        data= df['job title'].apply(lambda x: len(x)).to_list()).idxmax()
+    long = df.iloc[int(idxlong)]['job title']
+    man = df['job title'].apply(str.lower)
+    numman = [man[:].str.contains('manager')].shape[0]
+
+    return [ohionurses, numeng, long, numman]
 
 
 
@@ -202,7 +302,21 @@ def read_student_surveys(dirname):
     ...
     FileNotFoundError: ... 'nonexistentfile'
     """
-    ...
+    survdir=  dirname
+    surveys = os.listdir(survdir)
+    names = pd.DataFrame(pd.read_csv(os.path.join(survdir, surveys[0])))
+    names
+    cols = [x[:-4] for x in surveys][1:]
+    df = pd.DataFrame(index= names['id'], columns=['name'] + cols)
+    df['name'] = names['name']
+    df
+
+    for survey, col in zip(surveys[1:], cols):
+        temp = pd.DataFrame(pd.read_csv(os.path.join(survdir, survey)))
+        temp = temp.set_index('id')
+        df[col] = temp[temp.columns[0]]
+
+    return df
 
 
 def check_credit(df):
@@ -221,7 +335,19 @@ def check_credit(df):
     >>> out['ec'].max()
     6
     """
-    ...
+    cols = df.columns.to_list().remove('name')
+    outdf = df[cols].notnull().astype('int')
+    outdf['ec'] = outdf.apply(sum, axis=1)
+
+    i = 0
+    for col in cols:
+        while i < 2:
+            if outdf[col].sum()/outdf[col].shape[0]:
+                outdf['ec'] += 1
+                i+=1
+
+    outdf['name'] = df['name']
+    return outdf[['name', 'ec']]
 
 
 # ---------------------------------------------------------------------
@@ -241,7 +367,16 @@ def most_popular_procedure(pets, procedure_history):
     >>> isinstance(out, str)
     True
     """
-    ...
+    pets = pd.read_csv('data/pets/Pets.csv')
+    procedure_history = pd.read_csv('data/pets/ProceduresHistory.csv')
+    temp = pets.merge(procedure_history, right_on= 'PetID', 
+                left_on='PetID')[['PetID', 'ProcedureType']].set_index('PetID')
+
+    procedure_history = procedure_history.set_index('PetID')
+
+    out = pd.concat([procedure_history, temp])['ProcedureType']\
+        .value_counts(0).idxmax()
+    return out
 
 def pet_name_by_owner(owners, pets):
     """
@@ -260,7 +395,27 @@ def pet_name_by_owner(owners, pets):
     >>> 'Cookie' in out.values
     True
     """
-    ...
+    multipletowners = set(pets[pets['OwnerID'].duplicated(keep=False)]['OwnerID'].to_list())
+    owners = owners.set_index('OwnerID')
+
+    out = pd.Series(dtype='object')
+    out
+
+    pets[pets['OwnerID']==5508]['Name'].to_list()
+
+    def helper(key):
+        if key in multipletowners:
+            return (owners.loc[key]['Name'], 
+                    pets[pets['OwnerID']==key]['Name'].to_list())
+        else:
+            return (owners.loc[key]['Name'],
+                    pets[pets['OwnerID']==key]['Name'].to_list()[0])
+        
+
+    tuplist = pets['OwnerID'].apply(helper).to_list()
+    idx, values = zip(*tuplist)
+    out = pd.Series(values, idx)
+    return out
 
 
 def total_cost_per_city(owners, pets, procedure_history, procedure_detail):
@@ -280,4 +435,13 @@ def total_cost_per_city(owners, pets, procedure_history, procedure_detail):
     >>> set(out.index) <= set(owners['City'])
     True
     """
-    ...
+    procedure_history = procedure_history.merge(procedure_detail, on='ProcedureSubCode')[['PetID', 'ProcedureSubCode', 'Price']]
+
+    procedure_history = procedure_history.groupby('PetID').sum()
+
+    petsproc = pets.merge(procedure_history, on='PetID')
+
+    petsproc = petsproc.merge(owners, on= 'OwnerID', how='left')[['City', 'Price']]
+
+    out = petsproc.groupby('City').sum()['Price']
+    return out
