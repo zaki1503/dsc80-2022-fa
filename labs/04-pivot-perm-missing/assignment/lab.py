@@ -25,8 +25,51 @@ def latest_login(login):
     >>> result.loc[381, "Time"] > 7
     True
     """
-    ...
+    login = login
+    login['Time'] = login['Time'].apply(pd.to_datetime)
+    login
 
+    time_mask = (login['Time'].dt.hour >= 16) & \
+                (login['Time'].dt.hour <= 20)
+
+    df1 = login[time_mask].groupby('Login Id').count()
+    df2 = login.groupby('Login Id').count()
+    df2['Time'] = 0
+    df2.rename(columns={'Time':'nottime'}, inplace=True)
+    df2
+
+    out = pd.concat([df1, df2], axis = 1).drop(columns= ['nottime']).fillna(0)
+    return out
+
+# ---------------------------------------------------------------------
+# QUESTION 2
+# ---------------------------------------------------------------------
+
+def count_frequency(login):
+    """
+    Calculates the the login frequency for each user.
+    :param login: a DataFrame with login information but without unique IDs
+    :return: a Series, indexed by Login ID, containing 
+    the login frequency for each user.
+    >>> fp = os.path.join('data', 'login_table.csv')
+    >>> login = pd.read_csv(fp)
+    >>> freq = count_frequency(login)
+    >>> len(freq)
+    433
+    >>> np.isclose(freq.loc[466], 0.24517906336088155)
+    True
+    """
+    login = login
+    login['Time'] = login['Time'].apply(pd.to_datetime)
+
+    users = login.groupby('Login Id').min()
+    users['today'] = '2018-01-05 00:00:00'
+    users = users.apply(pd.to_datetime)
+
+    users['freq'] = (users['today'] - users['Time'])
+    users['freq'] = np.int64(users['freq']/np.timedelta64(1, 'D'))
+    users['freq'] = login.groupby('Login Id').count()['Time']/users['freq']
+    return users['freq']
 
 # ---------------------------------------------------------------------
 # QUESTION 3
@@ -47,7 +90,7 @@ def total_seller(sales):
     >>> out["Total"].sum() < 15000
     True
     """
-    ...
+    return sales.groupby('Name').sum()
 
 
 def product_name(sales):
@@ -65,7 +108,14 @@ def product_name(sales):
     >>> out.loc["pen"].isnull().sum()
     0
     """
-    ...
+    out = pd.pivot_table(
+                        data=sales, 
+                        columns=['Name'], 
+                        index='Product', 
+                        aggfunc=np.sum
+                        )
+    out.columns= out.columns.droplevel(0)
+    return out
 
 
 def count_product(sales):
@@ -83,7 +133,15 @@ def count_product(sales):
     >>> out.size
     70
     """
-    ...
+    out = pd.pivot_table(
+                data=sales, 
+                columns=['Date'], 
+                index=['Product', 'Name'], 
+                aggfunc=np.sum, 
+                fill_value=0
+                )
+    out.columns= out.columns.droplevel(0)
+    return out
 
 
 def total_by_month(sales):
@@ -101,7 +159,22 @@ def total_by_month(sales):
     >>> out.shape[1]
     5
     """
-    ...
+    sales['Date'] = sales['Date'].apply(pd.to_datetime)
+    sales
+
+    sales['Date'] = sales['Date'].dt.month_name().astype(str)
+    sales
+
+    out = pd.pivot_table(
+                    data=sales, 
+                    columns = ['Date'], 
+                    index=['Name', 'Product'], 
+                    aggfunc=np.sum, 
+                    fill_value=0
+                    )
+
+    out.columns= out.columns.droplevel(0)
+    return out
 
 
 # ---------------------------------------------------------------------
@@ -121,7 +194,20 @@ def diff_of_median_proportions(data, col='orange'):
     >>> 0 <= out
     True
     """
-    ...
+    df = data
+    col_lst = list(data.columns)
+    col_lst.remove('Factory')
+    col_lst
+
+    if col+'_prop' not in df.columns:
+        df['total'] = df[col_lst].sum(axis=1)
+        df[col+'_prop'] = df[col]/df['total']
+        df.groupby('Factory').median()[col+'_prop']
+
+    wacoprop = df.groupby('Factory').median()[col+'_prop'].loc['Waco']
+    yvprop = df.groupby('Factory').median()[col+'_prop'].loc['Yorkville']
+
+    return np.abs(wacoprop - yvprop)
 
 
 def simulate_null(data, col='orange'):
@@ -138,7 +224,18 @@ def simulate_null(data, col='orange'):
     >>> 0 <= out <= 1.0
     True
     """
-    ...
+    df = data
+    df['Factory'] = np.random.permutation(df['Factory'])
+    
+    col_lst = list(data.columns)
+    col_lst.remove('Factory')
+
+    df['prop'] = df[col]/df[col_lst].sum(axis=1)
+    
+    waco = df.groupby('Factory').median()['prop'].loc['Waco']
+    yv = df.groupby('Factory').median()['prop'].loc['Yorkville']
+
+    return np.abs(waco-yv)
 
 
 def pval_color(data, col='orange'):
@@ -156,7 +253,17 @@ def pval_color(data, col='orange'):
     >>> 0 <= pval <= 0.1
     True
     """
-    ...
+    obs = diff_of_median_proportions(data,col)
+    trials = []
+    for i in range(1000):
+        trial = simulate_null(data, col)
+        trials.append(trial)
+
+    trials = np.array(trials)
+
+    p = np.count_nonzero(trials >= obs)/1000
+
+    return p
 
 
 # ---------------------------------------------------------------------
@@ -182,7 +289,14 @@ def ordered_colors():
     >>> all([isinstance(x[1], float) for x in out])
     True
     """
-    ...
+    out = [
+        ('red', 0.001),
+        ('purple', 0.054),
+        ('yellow', 0.128),
+        ('orange', 0.327),
+        ('green', 0.577)
+        ]
+    return out
 
 
 # ---------------------------------------------------------------------
@@ -205,7 +319,7 @@ def same_color_distribution():
     >>> out[1] in ['Fail to Reject', 'Reject']
     True
     """
-    ...
+    return (0.013, 'Reject')
 
 
 # ---------------------------------------------------------------------
@@ -224,7 +338,14 @@ def perm_vs_hyp():
     >>> set(out) <= set(ans)
     True
     """
-    ...
+    out = [
+        'H',
+        'H',
+        'P',
+        'P',
+        'H'
+    ]
+    return out
 
 
 # ---------------------------------------------------------------------
@@ -243,7 +364,7 @@ def after_purchase():
     >>> set(out) <= set(ans)
     True
     """
-    ...
+    return ['MCAR', 'MAR', 'MD', 'MAR', 'MAR']
 
 
 # ---------------------------------------------------------------------
@@ -264,4 +385,4 @@ def multiple_choice():
     >>> out[1] in ans
     True
     """
-    ...
+    return ['NI', 'MAR', 'MD', 'MCAR', 'MCAR']

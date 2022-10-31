@@ -23,7 +23,8 @@ def count_monotonic(arr):
     1
     
     """
-    ...
+    return np.count_nonzero(np.diff(arr) < 0)
+    
 
 
 def monotonic_violations_by_country(vacs):
@@ -49,8 +50,23 @@ def monotonic_violations_by_country(vacs):
     2
     
     """
-    
-    ...
+    dam = vacs[[
+    'Country_Region', 
+    'Doses_admin', 
+    'People_at_least_one_dose'
+    ]].groupby('Country_Region').apply(lambda row: count_monotonic(np.array(row['Doses_admin'])))
+    patlodm = vacs[[
+        'Country_Region', 
+        'Doses_admin', 
+        'People_at_least_one_dose'
+        ]].groupby('Country_Region').apply(lambda row: count_monotonic(np.array(row['People_at_least_one_dose'])))
+
+    data = pd.concat([dam, patlodm], axis=1)
+    df = pd.DataFrame(data = data, columns= ['Doses_admin_monotonic', 'People_at_least_one_dose_monotonic'])
+
+    df['Doses_admin_monotonic'] = dam
+    df['People_at_least_one_dose_monotonic'] = patlodm
+    return df
 
 
 # ---------------------------------------------------------------------
@@ -80,7 +96,21 @@ def robust_totals(vacs):
     37860994
     
     """
-    ...
+    da = vacs[[
+    'Country_Region', 
+    'Doses_admin', 
+    'People_at_least_one_dose'
+    ]].groupby('Country_Region').apply(lambda row: np.percentile(row['Doses_admin'], 97))
+    patlod = vacs[[
+        'Country_Region', 
+        'Doses_admin', 
+        'People_at_least_one_dose'
+        ]].groupby('Country_Region').apply(lambda row: np.percentile(row['People_at_least_one_dose'], 97))
+
+    df = pd.DataFrame(index=da.index, columns=['Doses_admin', 'People_at_least_one_dose'])
+    df['Doses_admin'] = da
+    df['People_at_least_one_dose'] = patlod
+    return df
 
 
 # ---------------------------------------------------------------------
@@ -108,7 +138,13 @@ def fix_dtypes(pops_raw):
     4390
     
     """
-    ...
+    df = pops_raw.copy()
+
+    df['Population in 2022'] = np.array(df['Population in 2022']*1000).astype(np.int64)
+    df['World Percentage'] = df['World Percentage'].apply(lambda pc: float(pc.replace('%',''))/100)
+    df['Area (Km²)'] = np.array(df['Area (Km²)'].apply(lambda a: a.replace(',','').replace(' Km²',''))).astype(np.int64)
+    df['Density (P/Km²)'] = np.array(df['Density (P/Km²)'].apply(lambda d: d.replace('/Km²', ''))).astype(np.float64)
+    return df
 
 
 # ---------------------------------------------------------------------
@@ -142,7 +178,9 @@ def missing_in_pops(tots, pops):
     >>> missing
     {'Republic of Data Science'}
     """
-    ...
+    totsidx = tots.index
+    clist = set(totsidx[~totsidx.isin(pops['Country (or dependency)'])])
+    return clist
 
     
 def fix_names(pops):
@@ -167,7 +205,21 @@ def fix_names(pops):
     True
     
     """
-    ...
+    rdict = {
+        'Myanmar': 'Burma',
+        'Cape Verde': 'Cabo Verde',
+        'United States': 'US',
+        'South Korea': 'Korea, South',
+        'Czech Republic': 'Czechia',
+        'Ivory Coast': "Cote d'Ivoire",
+        'DR Congo': 'Congo (Kinshasa)',
+        'Republic of the Congo': 'Congo (Brazzaville)',
+        'Palestine': 'West Bank and Gaza'
+        }
+
+    pops2 = pops.replace({'Country (or dependency)': rdict})
+
+    return pops2
 
 
 # ---------------------------------------------------------------------
@@ -197,7 +249,22 @@ def partially_vaccinated_by_pop_density(tots, pops_fixed, k):
     >>> partially_vaccinated_by_pop_density(tots_sample, pops_fixed, 10).index[2]
     pd.Interval(25.964, 41.358, closed='right')
     """
-    ...
+    mdf = tots.merge(
+                pops_fixed, 
+                left_index=True, 
+                right_on='Country (or dependency)'
+                )[[
+                    'Density (P/Km²)',
+                    'People_at_least_one_dose',
+                    'Population in 2022'
+                    ]]
+
+    mdf['vr'] = (mdf['People_at_least_one_dose']/mdf['Population in 2022']).clip(0,1)
+    mdf['bin'] = pd.qcut(mdf['Density (P/Km²)'], q=10)
+    binneddf = mdf.groupby('bin').mean()
+
+
+    return binneddf['vr']
 
 
 # ---------------------------------------------------------------------
@@ -225,7 +292,11 @@ def clean_israel_data(df):
     'float64'
     
     """
-    ...
+    out = df.copy()
+    out['Age'] = out['Age'].replace('-', np.NaN).astype(np.float64)
+    out['Vaccinated'] = out['Vaccinated'].astype(bool)
+    out['Severe Sickness'] = out['Severe Sickness'].astype(bool)
+    return out
 
 
 # ---------------------------------------------------------------------
@@ -253,7 +324,38 @@ def mcar_permutation_tests(df, n_permutations=100):
     True
     
     """
-    ...
+    n_permutations = 100
+    df = df.copy()
+    dfnomissing = df.dropna(axis=0, how= 'any')
+
+    vacs = []
+    sicks = []
+
+    for i in range(n_permutations):
+        sdf = df
+        sdf['Vaccinated'] = np.random.permutation(sdf['Vaccinated'])
+        sdf['Severe Sickness'] = np.random.permutation(sdf['Severe Sickness'])
+        sdfnona = sdf.dropna(axis=0, how='any')
+
+        vac = np.abs(
+                np.mean(np.array(sdf['Vaccinated']))
+                - np.mean(np.array(sdfnona['Vaccinated']))
+                )
+
+        sick = vac = np.abs(
+                np.mean(np.array(sdf['Severe Sickness']))
+                - np.mean(np.array(sdfnona['Severe Sickness']))
+                )
+        
+        vacs.append(vac)
+        sicks.append(sick)
+
+
+    vacsarr = np.array(vacs)
+    sicksarr = np.array(sicks)
+
+    outup = (vacsarr, sicksarr)
+    return outup
     
     
 def missingness_type():
@@ -272,7 +374,7 @@ def missingness_type():
     True
     
     """
-    ...
+    return 1
 
 
 # ---------------------------------------------------------------------
@@ -297,7 +399,17 @@ def effectiveness(df):
     0.5
     
     """
-    ...
+    unvaxtot = df[df['Vaccinated'] != True].shape[0]
+    vaxtot = df[df['Vaccinated']].shape[0]
+    unvaxss = df[(df['Vaccinated'] != True) &
+                        (df['Severe Sickness'])].shape[0]
+    vaxss = df[(df['Vaccinated']) &
+                        (df['Severe Sickness'])].shape[0]
+    pu = unvaxss/unvaxtot
+    pv = vaxss/vaxtot
+
+    eff = (pu - pv)/pu
+    return eff 
 
 
 # ---------------------------------------------------------------------
@@ -337,7 +449,17 @@ def stratified_effectiveness(df):
     10
     
     """
-    ...
+    df = df.copy(deep=True)
+    out = pd.DataFrame(index=AGE_GROUPS, dtype=np.float64, columns=['effectiveness'])
+
+    df['Age'] = pd.cut(df['Age'], bins= [12,16,20,30,40,50,60,70,80,90,1000], labels=AGE_GROUPS)
+
+
+    for age in AGE_GROUPS:
+        tdf = df[df['Age']==age]
+        out.loc[age] = effectiveness(tdf)
+
+    return out['effectiveness']
 
 
 # ---------------------------------------------------------------------
@@ -373,7 +495,27 @@ def effectiveness_calculator(
     True
     
     """
-    ...
+    out = {
+        'Overall': 0,
+        'Young': 0,
+        'Old': 0
+    }
+
+    out['Young'] = (young_risk_unvaccinated 
+                    - young_risk_vaccinated)/young_risk_unvaccinated
+    out['Old'] = (old_risk_unvaccinated 
+                    - old_risk_vaccinated)/old_risk_unvaccinated
+
+    punvax = (1-young_vaccinated_prop) + (1-old_vaccinated_prop)
+    pvax = young_vaccinated_prop + old_vaccinated_prop
+    pu = ((1-young_vaccinated_prop)*young_risk_unvaccinated              
+        +(1-old_vaccinated_prop)*old_risk_unvaccinated)/punvax
+    pv = (young_vaccinated_prop*young_risk_vaccinated              
+        +old_vaccinated_prop*old_risk_vaccinated)/pvax
+
+    out['Overall'] = (pu-pv)/pu
+
+    return out
 
 
 # ---------------------------------------------------------------------
@@ -405,4 +547,13 @@ def extreme_example():
     >>> extreme_example().keys() == keys
     True
     """
-    ...
+    out = {
+        'young_vaccinated_prop': 0.99,
+        'old_vaccinated_prop': 0.01,
+        'young_risk_vaccinated': 0.15,
+        'young_risk_unvaccinated': 0.99,
+        'old_risk_vaccinated': 0.01,
+        'old_risk_unvaccinated': 0.06
+    }
+
+    return out
