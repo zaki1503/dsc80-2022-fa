@@ -22,7 +22,29 @@ def latest_login(login):
     >>> result = latest_login(login)
     >>> len(result)
     433
-    >>> result.loc[381, "Time"] > 7
+    >>> result.loc[393, "Time"] > 9
+    True
+    """
+    ...
+
+
+# ---------------------------------------------------------------------
+# QUESTION 2
+# ---------------------------------------------------------------------
+
+
+def count_frequency(login):
+    """
+    Calculates the the login frequency for each user.
+    :param login: a DataFrame with login information but without unique IDs
+    :return: a Series, indexed by Login ID, containing 
+    the login frequency for each user.
+    >>> fp = os.path.join('data', 'login_table.csv')
+    >>> login = pd.read_csv(fp)
+    >>> freq = count_frequency(login)
+    >>> len(freq)
+    433
+    >>> np.isclose(freq.loc[466], 0.24517906336088155)
     True
     """
     ...
@@ -153,7 +175,7 @@ def pval_color(data, col='orange'):
     >>> pval = pval_color(skittles)
     >>> isinstance(pval, float)
     True
-    >>> 0 <= pval <= 0.1
+    >>> 0 <= pval <= 0.2
     True
     """
     ...
