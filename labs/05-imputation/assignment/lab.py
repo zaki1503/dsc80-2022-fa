@@ -24,7 +24,7 @@ def first_round():
     >>> out[1] in ['NR', 'R']
     True
     """
-    ...
+    return [0.1335, 'NR']
 
 
 def second_round():
@@ -40,7 +40,7 @@ def second_round():
     >>> out[2] in ['ND', 'D']
     True
     """
-    ...
+    return [0.0028277628406094824, 'R', 'D']
 
 
 # ---------------------------------------------------------------------
@@ -62,7 +62,21 @@ def verify_child(heights):
     >>> out['child_5'] > out['child_50']
     True
     """
-    ...
+    from scipy.stats import ks_2samp
+
+    out = pd.Series(index=heights.columns, dtype=np.float64)
+    out
+
+    for column in heights.columns:
+        t = heights[column]
+        t2 = heights[column].dropna()
+        if column == 'child_95':
+            out[column] = 1-ks_2samp(t,t2).pvalue
+        else:
+            out[column] = ks_2samp(t,t2).pvalue
+
+    return out
+    
 
 
 def missing_data_amounts():
@@ -72,7 +86,7 @@ def missing_data_amounts():
     >>> set(missing_data_amounts()) <= set(range(1, 6))
     True
     """
-    ...
+    return [2,5]
 
 
 # ---------------------------------------------------------------------
@@ -97,7 +111,14 @@ def cond_single_imputation(new_heights):
     >>> (new_heights['child'].std() - out.std()) > 0.5
     True
     """
-    ...
+    df = new_heights.copy()
+    df['father'] = pd.qcut(df['father'], 4)
+
+    out = df.groupby('father').mean()['child']
+    out = df.groupby('father').mean()['child']
+
+    df2 = df.apply(lambda row: out[row['father']] if np.isnan(row['child']) else row['child'],axis=1)
+    return df2
 
 
 # ---------------------------------------------------------------------
@@ -124,7 +145,32 @@ def quantitative_distribution(child, N):
     >>> np.isclose(out.std(), 3.5, atol=0.65)
     True
     """
-    ...
+    if N == 0:
+        return
+    childnona = child.dropna()
+    probs, bins = np.histogram(childnona, density= True)
+
+    binsbins = {}
+    for i in range(len(bins)):
+        if len(bins) - i != 1:
+            binny = (bins[i], bins[i+1])
+            binsbins[i] = binny
+        else:
+            break
+
+
+    randbins = np.random.choice(a=len(probs), size=N, p=probs/probs.sum())
+
+    out = []
+
+
+    for binn in randbins:
+        edges = binsbins[binn]
+        hite = round(np.random.uniform(edges[0],edges[1]),1)
+        out.append(hite)
+
+    out = np.array(out)
+    return out
 
 
 def impute_height_quant(child):
@@ -146,7 +192,12 @@ def impute_height_quant(child):
     >>> np.isclose(out.std(), child.std(), atol=0.15)
     True
     """
-    ...
+    childnona = np.array(child.dropna())
+    N = child.isna().sum()
+    heights = quantitative_distribution(child,N)
+
+    out = pd.Series(np.concatenate([childnona, heights]))
+    return out
 
 
 # ---------------------------------------------------------------------
@@ -165,4 +216,12 @@ def answers():
     >>> len(websites)
     6
     """
-    ...
+    mc_answers = [1,2,2,1]
+    websites = ['https://www.cnn.com/robots.txt', 
+                'https://www.reddit.com/robots.txt',
+                'https://www.ebay.com/robots.txt',
+                'https://docs.google.com/robots.txt',
+                'https://stockx.com/robots.txt',
+                'https://twitter.com/robots.txt'
+                ]
+    return mc_answers, websites
