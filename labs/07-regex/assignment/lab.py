@@ -338,7 +338,7 @@ def tfidf_data(reviews_ser, review):
     """
     :Example:
     >>> fp = os.path.join('data', 'reviews.txt')
-    >>> reviews_ser = pd.read_csv(fp, header=None, squeeze=True)
+    >>> reviews_ser = pd.read_csv(fp, header=None).squeeze("columns")
     >>> review = open(os.path.join('data', 'review.txt'), encoding='utf8').read().strip()
     >>> out = tfidf_data(reviews_ser, review)
     >>> out['cnt'].sum()
@@ -353,7 +353,7 @@ def relevant_word(out):
     """
     :Example:
     >>> fp = os.path.join('data', 'reviews.txt')
-    >>> reviews_ser = pd.read_csv(fp, header=None, squeeze=True)
+    >>> reviews_ser = pd.read_csv(fp, header=None).squeeze("columns")
     >>> review = open(os.path.join('data', 'review.txt'), encoding='utf8').read().strip()
     >>> out = tfidf_data(reviews_ser, review)
     >>> relevant_word(out) in out.index
