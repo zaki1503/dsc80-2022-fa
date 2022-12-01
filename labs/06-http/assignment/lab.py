@@ -27,14 +27,76 @@ def question1():
     """
     # Don't change this function body!
     # No python required; create the HTML file.
+    import textwrap
+    file_html = textwrap.dedent(
+        """
+        <html>
+            <head>
+                <title> Untitled </title>
+                </head>
+                <body>
+                    <h1> Primero Header for images
+                    </h1>
+                    <img src="./data/image.jpg">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/49/A_black_image.jpg">
+                    <img src="missing" alt="lost to the sands of time">
 
+                    <h1> Header para Search Engines </h1>
+                    <a href= "https://www.google.com"> the verb,  </a>
+                    <a href= "https://www.bing.com"> the challenger,  </a>
+                    <a href= "https://duckduckgo.com"> the paranoid  </a>
+
+                    <h1> Table </h1>
+                    <table>
+                        <tr>
+                            <td> . </td>
+                            <td>Blue</td>
+                            <td>Brown</td>
+                        </tr>
+                        <tr>
+                            <td> Blue </td>
+                            <td> BB </td>
+                            <td> BBr </td>
+                        </tr>
+                        <tr>
+                            <td> Brown </td>
+                            <td> BBr </td>
+                            <td> BrBr </td>
+                        </tr>
+                    </table>
+                </body>
+            </html>
+        """
+    )
+
+    f = open("lab06_1.html", "w")
+    f.write(file_html)
+    f.close()
+    
     return
 
 
 # ---------------------------------------------------------------------
 # QUESTION 2
 # ---------------------------------------------------------------------
+def helper(page):
+    price = page.find('p', attrs={'class': 'price_color'}).text
+    price = float(''.join([x for x in price if (x.isdigit() or x == '.')]))
 
+    def has_star_rating(x):
+        return 'star-rating' in x if x else False
+
+    rating = (
+        page
+        .find('p', attrs={'class': lambda })
+        .get('class')[-1]
+    )
+
+    str2int = {'One': 1, 'Two': 2, 'Three': 3, 'Four': 4, 'Five': 5}
+    if (str2int[rating] >= 4) and (price < 50):
+        return True
+    else:
+        return False
 
 
 

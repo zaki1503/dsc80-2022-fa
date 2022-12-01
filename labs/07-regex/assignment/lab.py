@@ -34,7 +34,7 @@ def match_1(string):
     >>> match_1("1b[#d] _")
     True
     """
-    pattern = ...
+    pattern = "^..\[..\]"
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -65,7 +65,7 @@ def match_2(string):
     >>> match_2("(858) 456-7890b")
     False
     """
-    pattern = ...
+    pattern = "^\(858\)\s\d{3}-\d{4}$"
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -97,7 +97,7 @@ def match_3(string):
     >>> match_3(" adf!qe? ")
     False
     """
-    pattern = ...
+    pattern = '^[\w\s\?]{5,9}\?$'
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -135,7 +135,7 @@ def match_4(string):
     >>> match_4("$!@$")
     False
     """
-    pattern = ...
+    pattern = '^\$[^abc]*\$[aA]+[bB]+[cC]+$'
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -158,7 +158,7 @@ def match_5(string):
     >>> match_5("dsc80+.py")
     False
     """
-    pattern = ...
+    pattern = r'^[a-zA-Z_0-9]+(\.py)$'
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -183,7 +183,7 @@ def match_6(string):
     >>> match_6("ABCDEF_ABCD")
     False
     """
-    pattern = ...
+    pattern = r'^[a-z]+_[a-z]+$'
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -204,7 +204,7 @@ def match_7(string):
     >>> match_7("_ncde")
     False
     """
-    pattern = ...
+    pattern = r'^_.*_$'
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -234,7 +234,7 @@ def match_8(string):
     >>> match_8("ASDJKL9380JKAL")
     True
     """
-    pattern = ...
+    pattern = r'^[^1Oi]+$'
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -267,7 +267,7 @@ def match_9(string):
     >>> match_9('TX-32-SAN-4491')
     False
     '''
-    pattern = ...
+    pattern = r'^(CA-\d{2}-LAX-\d{4}|CA-\d{2}-SAN-\d{4}|NY-\d{2}-[A-Z]{3}-\d{4})$'
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -299,7 +299,11 @@ def match_10(string):
     ['bde']
     
     '''
-    ...
+    out = string.lower()
+    out = re.sub(pattern=r'[^\w]', repl='', string=out)
+    out = re.sub(pattern=r'a', repl='', string=out)
+    out_lst = re.findall(pattern=r'\w{3}', string=out)
+    return out_lst
 
 
 # ---------------------------------------------------------------------
@@ -326,7 +330,29 @@ def extract_personal(s):
     >>> addresses[0] == '530 High Street'
     True
     """
-    ...
+    emails = re.findall(
+        pattern='[\t,\|#]([\w]+@[\w\.]+)[\t,\|#]',
+        string= s
+    )
+
+    ssn = re.findall(
+        pattern='ssn:([\d]{3}-[\d]{2}-[\d]{4})',
+        string= s
+    )
+
+    bitcoin = re.findall(
+        pattern='bitcoin:([\w]+)[^\w]',
+        string= s
+    )
+
+    addresses = re.findall(
+        pattern='(\t|,|\|)([\d]+ [\w ]+)\n',
+        string= s
+    )
+    addresses = [address[1] for address in addresses if address[1]]
+
+    return emails, ssn, bitcoin, addresses
+    
 
 
 # ---------------------------------------------------------------------
@@ -346,7 +372,29 @@ def tfidf_data(reviews_ser, review):
     >>> 'before' in out.index
     True
     """
-    ...
+    review_len = len(review.split())
+    words = set(review.split())
+    out = pd.DataFrame(columns=['cnt', 'tf', 'idf', 'tfidf'], index=words)
+
+
+    for word in words:
+        pattern = '\\b' + str(word) + '\\b'
+        word_ct = len(re.findall(pattern=pattern, string=review))
+        tf = word_ct / review_len
+        idf = (
+            (np.log(reviews_ser.size/
+            np.count_nonzero(reviews_ser.str.contains(pattern))))
+                    )
+        tfidf= tf*idf
+        out.loc[word] = [word_ct, tf, idf, tfidf]
+
+    out = out.astype(np.float64)
+
+    out['cnt'] = out['cnt'].astype(np.int64)
+
+    return out
+    
+
 
 
 def relevant_word(out):
@@ -359,7 +407,7 @@ def relevant_word(out):
     >>> relevant_word(out) in out.index
     True
     """
-    ...
+    return out['tfidf'].idxmax()
 
 
 # ---------------------------------------------------------------------
@@ -376,7 +424,8 @@ def hashtag_list(tweet_text):
     >>> (out.iloc[0] == ['NLP', 'NLP1', 'NLP1'])
     True
     """
-    ...
+    tuplist = tweet_text.str.findall('#([^\s]+)($|\s)')
+    return tuplist.apply(lambda x: [tup[0] for tup in x])
 
 
 def most_common_hashtag(tweet_lists):
@@ -387,19 +436,22 @@ def most_common_hashtag(tweet_lists):
     >>> most_common_hashtag(test).iloc[0] == 'NLP1'
     True
     """
-    ...
+    most_common = pd.Series(tweet_lists.sum()).value_counts().idxmax()
+    def helper(lst):
+        if len(lst) == 0:
+            return np.NaN
+        elif len(lst) == 1:
+            return lst[0]
+        else:
+            return most_common
+
+    return tweet_lists.apply(helper)
 
 
 # ---------------------------------------------------------------------
 # QUESTION 5
 # ---------------------------------------------------------------------
-
-
-
-
     
-
-
 def create_features(ira):
     """
     Takes in the ira data and returns a DataFrame with the described features.
@@ -416,4 +468,34 @@ def create_features(ira):
     >>> (out == ans).all().all()
     True
     """
-    ...
+    rt = '^RT'
+    tag = '@([\w]+)'
+    hrefs = '(http[s]*://[^\s]+)'
+    ht = '#([^\s]+)'
+    punc = '[^\w]'
+    out = ira.copy()
+    ht_lst = hashtag_list(ira['text'])
+    mc_ht = most_common_hashtag(ht_lst)
+
+    out['num_hashtags'] = ht_lst.apply(len)
+    out['mc_hashtags'] = mc_ht
+    out['num_tags'] = ira['text'].apply(
+        lambda x: x if pd.isna(x) else len(re.findall(tag, x))
+    )
+    out['num_links'] = ira['text'].apply(
+        lambda x: len(re.findall(hrefs, x) if pd.notna(x) else x)
+    )
+    out['is_retweet'] = ira['text'].apply(lambda x: x if pd.isna(x) else(
+        True if re.match(rt,x) else False
+    )
+    )
+    def cleaning_helper(string):
+        r = '%s|%s|%s|%s|%s' % (rt, tag, hrefs, ht, punc)
+        if pd.isnull(string):
+            return string
+        else:
+            return re.sub(r, ' ', string).lower().strip()
+
+    out['text'] = ira['text'].apply(cleaning_helper)
+
+    return out

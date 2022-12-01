@@ -34,7 +34,19 @@ def get_book(url):
     >>> book_string[:20] == '\\n\\n\\n\\n\\nProduced by Chu'
     True
     """
-    ...
+    time.sleep(6)
+    try:
+        r=requests.get(url)
+        full= r.text
+        truncate_start = full.split('*** START')[1]
+        truncate_end = truncate_start.split("*** END")[0]
+
+        remove_st = truncate_end.split('***')[1]
+        remove_st = remove_st.replace("\r\n", "\n")
+
+        return remove_st
+    except Exception as e:
+        print(e)
 
 
 # ---------------------------------------------------------------------
@@ -71,7 +83,18 @@ def tokenize(book_string):
     >>> '(' in tokens
     True
     """
-    ...
+    tokens = ["\x02"]
+
+    test = book_string.strip()
+    test = re.sub(pattern="\n{2,}", repl=" \x03 \x02 ", string= test)
+    test = re.sub(pattern=" {1,}", repl=" ", string= test)
+    test = re.sub(r"([\W]+|[^\w/'+$\s-]+)\s*", r" \1 ", string= test)
+    test = re.sub(pattern="\n", repl=" ", string= test)
+    test = re.sub(pattern="[.]", repl= " . ", string= test)
+
+    tokens.extend(test.split())
+    tokens.append("\x03")
+    return tokens
 
 
 # ---------------------------------------------------------------------
@@ -110,7 +133,9 @@ class UniformLM(object):
         >>> (unif.mdl == 0.25).all()
         True
         """
-        ...
+        out_dt = {token:1 for token in tokens}
+
+        return pd.Series(out_dt)/len(out_dt)
     
     def probability(self, words):
         """
@@ -128,7 +153,10 @@ class UniformLM(object):
         >>> unif.probability(('one', 'two')) == 0.0625
         True
         """
-        ...
+        if all(i in self.mdl.index for i in set(words)):
+            return np.prod([self.mdl[word] for word in words])
+        else:
+            return 0
         
     def sample(self, M):
         """
@@ -147,7 +175,13 @@ class UniformLM(object):
         >>> np.isclose(s, 0.25, atol=0.05).all()
         True
         """
-        ...
+        lst = list(np.random.choice(
+                            a = self.mdl.index, 
+                            p= self.mdl.values, 
+                            size=M
+                            ))
+
+        return ' '.join(lst)
 
 
 # ---------------------------------------------------------------------
@@ -183,7 +217,15 @@ class UnigramLM(object):
         >>> unig.mdl.loc['one'] == 3 / 7
         True
         """
-        ...
+        out_dt = {}
+
+        for token in tokens:
+            if token not in out_dt.keys():
+                out_dt[token]= 1
+            else:
+                out_dt[token]+=1
+
+        return pd.Series(out_dt)/len(tokens)
     
     def probability(self, words):
         """
@@ -202,7 +244,10 @@ class UnigramLM(object):
         >>> np.isclose(p, 0.12244897959, atol=0.0001)
         True
         """
-        ...
+        if all(i in self.mdl.index for i in words):
+            return np.prod([self.mdl[word] for word in words])
+        else:
+            return 0
         
     def sample(self, M):
         """
@@ -220,7 +265,12 @@ class UnigramLM(object):
         >>> np.isclose(s, 0.41, atol=0.05).all()
         True
         """
-        ...
+        lst = list(np.random.choice(
+                            a = self.mdl.index, 
+                            p= self.mdl.values, 
+                            size=M))
+
+        return ' '.join(lst)
 
 
 # ---------------------------------------------------------------------
@@ -271,7 +321,11 @@ class NGramLM(object):
         >>> out[2]
         ('two', 'three')
         """
-        ...
+        out = []
+        for i in range(len(tokens)-self.N+1):
+            out.append(tuple(tokens[i:i+self.N]))
+
+        return out
         
     def train(self, ngrams):
         """
@@ -289,18 +343,31 @@ class NGramLM(object):
         True
         """
         # N-Gram counts C(w_1, ..., w_n)
-        ...
+        
         
         # (N-1)-Gram counts C(w_1, ..., w_(n-1))
-        ...
+        
 
         # Create the conditional probabilities
-        ...
+        
         
         # Put it all together
+        out= pd.DataFrame(columns=["ngram", "n1gram", "prob"])
 
-        ...
-        ...
+        ngrams = self.ngrams
+        n1grams = [tuple(x[:-1]) for x in ngrams]
+        out["ngram"] = ngrams
+        out["n1gram"] = n1grams
+        out["prob"] = [1 for x in ngrams]
+        vcounts = out["n1gram"].value_counts()
+
+        def helper(row):
+            return row['prob']/vcounts[row['n1gram']]
+
+        out["prob"] = out.apply(helper, axis=1)
+
+        return out
+
     
     def probability(self, words):
         """
@@ -319,7 +386,41 @@ class NGramLM(object):
         >>> bigrams.probability('one two five'.split()) == 0
         True
         """
-        ...
+        modelngrams, wordsngrams = list(self.mdl['ngram']), list(self.create_ngrams(words))
+
+        prob = []
+
+        if not all([ngram in modelngrams for ngram in wordsngrams]):
+            return 0 #
+
+
+        subgram = self.prev_mdl
+        subgrams = []
+        while hasattr(subgram, 'prev_mdl'):
+            subgrams.append(subgram)
+            subgram = subgram.prev_mdl
+
+        subgrams.append(subgram)
+        subgrams = subgrams[::-1]
+
+        if not all([word in subgrams[0].mdl.index for word in words]):
+            return 0 
+            
+        for i in range(len(subgrams)):
+            if i == 0:
+                prob.append(subgrams[i].mdl[words[0:i+1][0]])
+                continue
+            if tuple(words[0:i+1]) not in list(subgrams[i].mdl["ngram"]):
+                return 0
+            sdf = subgrams[i].mdl
+            prob.append(float(sdf[sdf["ngram"] == tuple(words[0:i+1])]["prob"]))
+
+        model = self.mdl
+        for ngram in wordsngrams:
+            prob.append(float(model[model["ngram"] == ngram]["prob"].sum()))
+
+        return np.prod(prob)
+        
     
 
     def sample(self, M):
@@ -338,9 +439,42 @@ class NGramLM(object):
         >>> set(samp.split()) <= {'\\x02', '\\x03', 'one', 'two', 'three', 'four'}
         True
         """
-        # Use a helper function to generate sample tokens of length `length`
-        ...
-        
-        # Transform the tokens to strings
-        ...
-        ...
+        string = ["\x02"]
+
+        subgram = self.prev_mdl
+        subgrams = []
+        while hasattr(subgram, 'prev_mdl'):
+            subgrams.append(subgram)
+            subgram = subgram.prev_mdl
+
+        subgrams.append(subgram)
+        subgrams = subgrams[::-1][1:]
+
+        for i in range(len(subgrams)):
+            tdf = subgrams[0].mdl
+            tdf = tdf[tdf["n1gram"]==tuple(string[i:i+1])]
+            if tdf.shape[0] == 1:
+                string.append(tdf['ngram'][0][-1])
+            else:
+                x = tdf
+
+        i = len(subgrams)
+        while i < M-1:
+            tdf = self.mdl
+            if tuple(string[i:i+self.N]) not in [tup for tup in tdf["n1gram"]]:
+                for i in range(M-len(string)):
+                    string.extend(["\x03"]*(M-len(string)))
+                    break
+            else:
+                tdf = tdf[tdf["n1gram"]==tuple(string[i:i+self.N])]
+                if tdf.shape[0] == 1:
+                    string.append(tdf['ngram'].values[0][-1])
+                else:
+                    string.append(np.random.choice(
+                                a=[ngram[-1] for ngram in tdf["ngram"]],
+                                p=[p for p in tdf["prob"]]))
+            
+            i+=1
+
+        string.append("\x03")
+        return string
